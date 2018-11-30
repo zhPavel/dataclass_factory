@@ -80,7 +80,7 @@ def get_tuple_parser(parsers: Collection[Callable], debug_path: bool):
     return tuple_parser
 
 
-def get_dataclass_parser(cls: Callable, parsers: Dict[str, Callable], trim_trailing_underscore: bool, debug_path: bool):
+def get_class_parser(cls: Callable, parsers: Dict[str, Callable], trim_trailing_underscore: bool, debug_path: bool):
     field_info = {
         f: (f.rstrip("_") if trim_trailing_underscore else f, p) for f, p in parsers.items()
     }
@@ -126,17 +126,6 @@ def get_collection_factory(cls):
 
 def get_dict_parser(key_parser, value_parser):
     return lambda data: {key_parser(k): value_parser(v) for k, v in data.items()}
-
-
-def get_class_parser(cls, parsers: Dict[str, Callable], debug_path: bool):
-    if debug_path:
-        return lambda data: cls(**{
-            k: element_parser(parser, data.get(k), k) for k, parser in parsers.items() if k in data
-        })
-    else:
-        return lambda data: cls(**{
-            k: parser(data.get(k)) for k, parser in parsers.items() if k in data
-        })
 
 
 class ParserFactory:
@@ -190,12 +179,21 @@ class ParserFactory:
             return get_union_parser(tuple(self.get_parser(x) for x in cls.__args__))
         if is_dataclass(cls):
             parsers = {field.name: self.get_parser(field.type) for field in fields(cls)}
-            return get_dataclass_parser(cls, parsers, self.trim_trailing_underscore, self.debug_path)
+            return get_class_parser(cls, parsers, self.trim_trailing_underscore, self.debug_path)
+        try:
+            # sql alchemy model
+            parsers = {
+                prop.key: self.get_parser(cls.__annotations__[prop.key]) for prop in cls.__mapper__.iterate_properties
+            }
+            print(parsers)
+            return get_class_parser(cls, parsers, self.trim_trailing_underscore, self.debug_path)
+        except AttributeError:
+            pass
         try:
             arguments = inspect.signature(cls.__init__).parameters
             parsers = {
                 k: self.get_parser(v.annotation) for k, v in arguments.items()
             }
-            return get_class_parser(cls, parsers, self.debug_path)
+            return get_class_parser(cls, parsers, self.trim_trailing_underscore, self.debug_path)
         except AttributeError:
             raise ValueError("Cannot find parser for `%s`" % repr(cls))
