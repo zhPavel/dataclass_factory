@@ -222,7 +222,9 @@ def create_parser(factory, schema: Schema, debug_path: bool, cls):
     try:
         # sql alchemy model
         parsers = {
-            prop.key: factory.parser(cls.__annotations__[prop.key]) for prop in cls.__mapper__.iterate_properties
+            prop.key: factory.parser(prop.columns[0].type.python_type)
+            for prop in cls.__mapper__.iterate_properties
+            if hasattr(prop, "columns")
         }
         print(parsers)
         return get_class_parser(cls, parsers, debug_path)

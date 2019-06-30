@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from dataclasses import is_dataclass, fields
-
 from typing import Any, Type, get_type_hints
 
 from .common import Serializer
@@ -56,7 +55,16 @@ def optional_serializer(serializer):
     return lambda data: None if data is None else serializer(data)
 
 
-def get_class_serializer(cls, serializers: Dict[str, Serializer], debug_path: bool) -> Serializer:
+def get_sqla_serializer(factory, class_: Type) -> Serializer:
+    serializers = {
+        prop.key: (
+            factory.serializer(prop.columns[0].type.python_type)
+            if hasattr(prop, "columns")
+            else lazy_serializer(factory)
+        )
+        for prop in class_.__mapper__.iterate_properties
+    }
+
     def class_serializer(data):
         return {
             k: serializer(getattr(data, k))
@@ -119,12 +127,7 @@ def create_serializer(factory, schema: Schema, debug_path: bool, class_: Type) -
             schema,
         )
     try:
-        # sql alchemy model
-        serializers = {
-            prop.key: lazy_serializer(factory) for prop in
-            class_.__mapper__.iterate_properties
-        }
-        return get_class_serializer(class_, serializers, debug_path)
+        return get_sqla_serializer(factory, class_)
     except AttributeError as e:
         pass
     return stub_serializer
