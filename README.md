@@ -440,7 +440,7 @@ factory.load(1, int)  # prints: parsing done
 
 ## Supported types
 
-* numeric types (`int`, `float`, `Decimal`, `complex`)
+* numeric types (`int`, `float`, `Decimal`, `complex`, `Fraction`)
 * `bool`
 * `str`, `bytearray`, `bytes`
 * `List`

@@ -1,4 +1,5 @@
 import decimal
+from fractions import Fraction
 from collections import deque
 from typing import (
     List, Set, FrozenSet, Deque, Any, Callable,
@@ -269,7 +270,7 @@ def create_parser_impl(factory, schema: Schema, debug_path: bool, cls: Type) -> 
         return get_optional_parser(factory.parser(cls.__args__[0]))
     if cls in (str, bytearray, bytes):
         return get_parser_with_check(cls)
-    if cls in (int, float, complex, bool):
+    if cls in (int, float, complex, bool, Fraction):
         return cls
     if cls in (decimal.Decimal,):
         return decimal_parse
